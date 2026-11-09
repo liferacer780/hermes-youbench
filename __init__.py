@@ -211,7 +211,21 @@ def _cmd_report(rest: list[str]) -> str:
     return text
 
 
-def handle_command(raw_args: str = "", *, session_id: str = "", session_key: str = "", **_: Any) -> str:
+_PLAIN_SURFACES = {"desktop", "cli", "tui", "local", "acp"}
+
+
+def _plain(text: str) -> str:
+    """Desktop/CLI show command replies as plain text: drop markdown emphasis and code ticks."""
+    return text.replace("**", "").replace("`", "")
+
+
+def handle_command(raw_args: str = "", *, session_id: str = "", session_key: str = "", platform: str = "",
+                   **kw: Any) -> str:
+    text = _handle_command(raw_args, session_id=session_id, session_key=session_key)
+    return _plain(text) if (platform or "local") in _PLAIN_SURFACES else text
+
+
+def _handle_command(raw_args: str = "", *, session_id: str = "", session_key: str = "") -> str:
     try:
         parts = shlex.split(raw_args or "", posix=True)
     except ValueError:

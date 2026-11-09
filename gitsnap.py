@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Optional
 
 GIT_TIMEOUT = 20
+# Build/test caches are never part of a task: keep them out of snapshots and diffs.
+NOISE = [":(exclude,glob)**/__pycache__/**", ":(exclude,glob)**/*.pyc", ":(exclude,glob)**/.pytest_cache/**",
+         ":(exclude,glob)**/node_modules/**", ":(exclude,glob)**/.mypy_cache/**", ":(exclude,glob)**/.ruff_cache/**"]
 _IDENTITY = {
     "GIT_AUTHOR_NAME": "youbench", "GIT_AUTHOR_EMAIL": "youbench@localhost",
     "GIT_COMMITTER_NAME": "youbench", "GIT_COMMITTER_EMAIL": "youbench@localhost",
@@ -76,7 +79,7 @@ def snapshot_tree(root: str | Path) -> str:
         else:
             os.unlink(tmp_index)
         env = {"GIT_INDEX_FILE": tmp_index}
-        _git(["add", "-A", "--", "."], root, env=env, timeout=GIT_TIMEOUT)
+        _git(["add", "-A", "--", ".", *NOISE], root, env=env, timeout=GIT_TIMEOUT)
         return _git(["write-tree"], root, env=env).stdout.decode().strip()
     finally:
         with _suppress():
@@ -131,13 +134,13 @@ def make_sandbox(archive: Path, dest: Path) -> None:
             tar.extractall(dest, members=members)
     _git(["init", "-q"], dest)
     _git(["config", "core.autocrlf", "false"], dest)
-    _git(["add", "-A"], dest, timeout=120)
+    _git(["add", "-A", "--", ".", *NOISE], dest, timeout=120)
     _git(["commit", "-q", "--allow-empty", "--no-verify", "-m", "youbench baseline"], dest, env=_IDENTITY, timeout=120)
 
 
 def sandbox_diff(dest: Path, max_chars: int = 60_000) -> tuple[str, str]:
     """(stat, patch) of everything the replay changed in *dest* relative to its baseline."""
-    _git(["add", "-A"], dest, timeout=120)
+    _git(["add", "-A", "--", ".", *NOISE], dest, timeout=120)
     stat = _git(["diff", "--cached", "--stat", "HEAD"], dest).stdout.decode(errors="replace")
     patch = _git(["diff", "--cached", "--no-color", "--no-ext-diff", "HEAD"], dest, timeout=60).stdout.decode(errors="replace")
     return stat.strip(), _truncate(patch, max_chars)

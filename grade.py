@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -59,9 +60,26 @@ def run_check(ctx: Any, check_cmd: str, sandbox: str, timeout: int = 600) -> tup
         # Hermes's approval gate refused the command: that says nothing about the replay.
         return None, _clip("Check command was not approved, so it did not run: " + output.strip(), 4000)
     code = data.get("exit_code")
+    if code is not None and int(code) != 0 and _environment_error(check_cmd, output, int(code)):
+        # The check tool itself is missing (wrong interpreter, not installed): not the replay's fault.
+        return None, _clip("Check command could not run in this environment: " + output.strip(), 4000)
     if code is None:
         return None, _clip(output or "check did not report an exit code", 4000)
     return int(code) == 0, _clip(output, 4000)
+
+
+_MISSING_TOOL = re.compile(
+    r"command not found|is not recognized as an internal or external command|"
+    r"No such file or directory: '?(python|py|pytest|npm|node|cargo|go)\b|"
+    r"No module named '?(pytest|unittest|nose|tox)\b",
+    re.IGNORECASE,
+)
+
+
+def _environment_error(check_cmd: str, output: str, code: int) -> bool:
+    if code in (127, 9009):  # POSIX / Windows "command not found"
+        return True
+    return bool(_MISSING_TOOL.search(output or ""))
 
 
 def judge(ctx: Any, *, prompt: str, reference: str, candidate: str, summary: str,
@@ -141,6 +159,8 @@ def grade(ctx: Any, case: dict, *, sandbox: str, candidate: str, summary: str, s
 
     out["score"] = float(verdict["score"])
     out["reason"] = verdict["reason"]
+    if case.get("check_cmd") and out["check_ok"] is None:
+        out["reason"] += " (Graded by the judge: your check command could not run here. See /youbench check.)"
     # Your own check command is the source of truth when there is one.
     out["passed"] = bool(out["check_ok"]) if out["check_ok"] is not None else verdict["passed"]
     return out
