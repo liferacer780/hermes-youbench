@@ -23,6 +23,10 @@ _CONN: Optional[sqlite3.Connection] = None
 _CONN_KEY: Optional[str] = None
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
 CREATE TABLE IF NOT EXISTS turns (
     session_id   TEXT PRIMARY KEY,
     prompt       TEXT NOT NULL,
@@ -128,6 +132,20 @@ def _rows(sql: str, params: tuple = ()) -> list[dict[str, Any]]:
 
 def new_id(prefix: str) -> str:
     return f"{prefix}{uuid.uuid4().hex[:8]}"
+
+
+# --- meta ----------------------------------------------------------------------------------------
+
+def get_meta(key: str) -> Optional[str]:
+    rows = _rows("SELECT value FROM meta WHERE key=?", (key,))
+    return rows[0]["value"] if rows else None
+
+
+def set_meta(key: str, value: Optional[str]) -> None:
+    if value is None:
+        _exec("DELETE FROM meta WHERE key=?", (key,))
+    else:
+        _exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value))
 
 
 # --- turns (one pending/last turn per session) ------------------------------------------------

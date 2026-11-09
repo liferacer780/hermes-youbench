@@ -1,5 +1,5 @@
 name: youbench
-version: "0.1.0"
+version: "0.1.1"
 manifest_version: 2
 api_version: 1
 description: "Benchmark models on YOUR work. YouBench saves real tasks from your Hermes sessions (prompt + exact starting files), replays them on any models you choose in isolated sandboxes, grades each attempt with your own test command and a judge, and shows a leaderboard of pass rate, cost, time and steps, so you know which model is actually best for you."

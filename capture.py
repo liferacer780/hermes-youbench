@@ -68,6 +68,10 @@ def on_pre_llm_call(session_id: str = "", user_message: str = "", model: str = "
         if bool(_setting("auto_capture", True)):
             cwd = _session_cwd()
             root = gitsnap.repo_root(cwd) if cwd else None
+            if not root:
+                # Fallback: the project the user pinned with /youbench project <folder>.
+                pinned = store.get_meta("project")
+                root = gitsnap.repo_root(pinned) if pinned else None
             if root:
                 try:
                     tree = gitsnap.snapshot_tree(root)
@@ -120,7 +124,9 @@ def save_case(session_id: Optional[str], name: Optional[str] = None, check_cmd: 
                         "then run /youbench save.")
     if not turn.get("repo_root") or not turn.get("start_tree"):
         raise SaveError("The last task did not run inside a git repository, so YouBench has no starting "
-                        "snapshot to replay from. Open a git project in Hermes and try again.")
+                        "snapshot to replay from. Tell YouBench which project you are working on with "
+                        "/youbench project <folder> (for example /youbench project C:\\Users\\you\\my-app), "
+                        "then redo the task and save it.")
     root = turn["repo_root"]
     if not Path(root).is_dir():
         raise SaveError(f"The project folder {root} no longer exists.")

@@ -61,6 +61,7 @@ repository (any folder with `git init` works).
 
 | Command | What it does |
 |---|---|
+| `/youbench project <folder>` | Watch this git project even when the session's own folder is elsewhere |
 | `/youbench save [name] [--check "<cmd>"]` | Save the task Hermes just finished as a benchmark case |
 | `/youbench list` | List saved cases |
 | `/youbench check <case> <cmd>` | Set or change the test command for a case |

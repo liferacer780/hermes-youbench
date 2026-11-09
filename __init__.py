@@ -110,6 +110,7 @@ def _case_brief(c: dict) -> dict:
 
 HELP = """**YouBench**: benchmark models on your own work.
 
+- `/youbench project <folder>`: the git project YouBench watches when the session's own folder is not one
 - `/youbench save [name] [--check "<test command>"]`: save the task Hermes just finished as a benchmark case
 - `/youbench list`: your saved cases
 - `/youbench check <case> <command>`: set the test command that decides pass/fail for a case
@@ -145,6 +146,26 @@ def _cmd_save(rest: list[str], session_id: str) -> str:
     lines.append(f"Graded by: {'`' + case['check_cmd'] + '`' if case['check_cmd'] else 'judge (add --check for tests)'}")
     lines.append(f"You now have {len(store.list_cases())} case(s). Run `/youbench run <model> <model>` to compare.")
     return "\n".join(lines)
+
+
+def _cmd_project(path: str) -> str:
+    from . import gitsnap
+
+    path = path.strip().strip('"').strip("'")
+    if not path:
+        current = store.get_meta("project")
+        return (f"YouBench is watching `{current}` when a session's own folder is not a git project."
+                if current else "Usage: `/youbench project <folder>` (a git project folder). `/youbench project off` to clear.")
+    if path.lower() in ("off", "none", "clear"):
+        store.set_meta("project", None)
+        return "YouBench now only watches each session's own folder."
+    root = gitsnap.repo_root(path)
+    if not root:
+        return (f"⚠️ `{path}` is not inside a git project. Run `git init` there first "
+                "(YouBench needs git to snapshot your starting files).")
+    store.set_meta("project", root)
+    return (f"✅ YouBench is now watching **{root}**. Give Hermes a task in this project, then "
+            "`/youbench save --check \"<test command>\"` when it finishes.")
 
 
 def _cmd_list() -> str:
@@ -201,6 +222,8 @@ def handle_command(raw_args: str = "", *, session_id: str = "", session_key: str
     try:
         if sub == "save":
             return _cmd_save(rest, session_id)
+        if sub == "project":
+            return _cmd_project(raw_args.strip()[len(parts[0]):].strip())
         if sub in ("list", "ls", "cases"):
             return _cmd_list()
         if sub == "run":
