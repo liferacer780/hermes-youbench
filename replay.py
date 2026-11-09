@@ -111,7 +111,10 @@ def _launch(ctx: Any, job: dict) -> Optional[Any]:
     token = re.sub(r"[^a-z0-9_-]", "-", token.lower())
     guard.register_token(token, str(sandbox), case["repo_root"])
     prompt = guard.rewrite_repo_refs(case["prompt"], str(sandbox), case["repo_root"])
-    goal = GOAL_TEMPLATE.format(sandbox=sandbox, prompt=prompt, token=f"[youbench:{token}]")
+    where = str(sandbox)
+    if guard.WINDOWS:
+        where += f"  (in a Git Bash terminal: {guard.to_msys(str(sandbox))})"
+    goal = GOAL_TEMPLATE.format(sandbox=where, prompt=prompt, token=f"[youbench:{token}]")
     model, provider = parse_model(job["model"])
     base = dict(goal=goal, role="leaf", model=model, provider=provider, correlation_id=f"youbench-{token}",
                 metadata={"youbench_run": job["run_id"], "case": case["id"]})

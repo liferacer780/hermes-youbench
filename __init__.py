@@ -248,7 +248,10 @@ def _handle_command(raw_args: str = "", *, session_id: str = "", session_key: st
             case = store.get_case(rest[0])
             if not case:
                 return f"No case `{rest[0]}`."
-            store.update_case(case["id"], check_cmd=" ".join(rest[1:]))
+            cmd = " ".join(rest[1:])
+            if "/youbench" in cmd:
+                return "⚠️ That looks like two commands in one message. Send each /youbench check on its own line."
+            store.update_case(case["id"], check_cmd=cmd)
             return f"✅ `{case['name']}` will be graded by `{' '.join(rest[1:])}`."
         if sub in ("delete", "rm") and rest:
             case = store.delete_case(rest[0])

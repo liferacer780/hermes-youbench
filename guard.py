@@ -71,36 +71,66 @@ def on_subagent_start(child_session_id: Optional[str] = None, child_goal: Option
 
 # --- path helpers -------------------------------------------------------------------------------
 
+WINDOWS = os.name == "nt"
+_P = os.path  # path flavour (tests swap in ntpath to exercise Windows rules)
+_MSYS_RE = re.compile(r"^/(?:mnt/)?([A-Za-z])(?=/|$)(.*)$")
+
+
+def to_native(path: str) -> str:
+    """On Windows, Git Bash / MSYS (``/c/Users/x``) and WSL-style (``/mnt/c/Users/x``) paths → ``C:\\Users\\x``."""
+    if WINDOWS and isinstance(path, str):
+        m = _MSYS_RE.match(path.replace("\\", "/"))
+        if m:
+            return f"{m.group(1).upper()}:" + (m.group(2) or "/").replace("/", "\\")
+    return path
+
+
+def to_msys(path: str) -> str:
+    """``C:\\Users\\x`` → ``/c/Users/x`` (the form Git Bash commands use)."""
+    m = re.match(r"^([A-Za-z]):[\\/]?(.*)$", path or "")
+    if not m:
+        return path
+    return f"/{m.group(1).lower()}/" + m.group(2).replace("\\", "/")
+
+
 def _norm(path: str) -> str:
-    return os.path.normcase(os.path.abspath(os.path.expanduser(path)))
+    return _P.normcase(_P.abspath(_P.expanduser(to_native(path))))
 
 
 def _inside(path: str, root: str) -> bool:
     try:
-        return os.path.commonpath([_norm(path), _norm(root)]) == _norm(root)
+        return _P.commonpath([_norm(path), _norm(root)]) == _norm(root)
     except ValueError:  # different drives on Windows
         return False
 
 
 def map_path(path: str, sandbox: str, repo_root: str) -> tuple[str, bool]:
     """(mapped path, is_inside_sandbox)."""
-    raw = os.path.expanduser(path or ".")
-    if not os.path.isabs(raw):
-        return os.path.join(sandbox, raw), True
+    raw = _P.expanduser(to_native(path or "."))
+    if not _P.isabs(raw):
+        return _P.join(sandbox, raw), True
     if _inside(raw, sandbox):
         return raw, True
     if repo_root and _inside(raw, repo_root):
-        rel = os.path.relpath(_norm(raw), _norm(repo_root))
-        return os.path.join(sandbox, rel) if rel != "." else sandbox, True
+        rel = _P.relpath(_norm(raw), _norm(repo_root))
+        return _P.join(sandbox, rel) if rel != "." else sandbox, True
     return raw, False
 
 
 def rewrite_repo_refs(text: str, sandbox: str, repo_root: str) -> str:
     if not text or not repo_root:
         return text
-    variants = {repo_root, repo_root.replace("\\", "/"), repo_root.replace("/", "\\")}
-    for variant in sorted(variants, key=len, reverse=True):
-        text = text.replace(variant, sandbox)
+    pairs = {
+        repo_root: sandbox,
+        repo_root.replace("\\", "/"): sandbox.replace("\\", "/"),
+        repo_root.replace("/", "\\"): sandbox.replace("/", "\\"),
+    }
+    msys_repo, msys_sb = to_msys(repo_root), to_msys(sandbox)
+    if msys_repo != repo_root:
+        pairs[msys_repo] = msys_sb
+        pairs[msys_repo[0:2].upper() + msys_repo[2:]] = msys_sb  # /C/Users/... spelling
+    for old in sorted(pairs, key=len, reverse=True):
+        text = text.replace(old, pairs[old])
     return text
 
 

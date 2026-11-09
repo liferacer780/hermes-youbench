@@ -3,6 +3,6 @@
   "label": "YouBench",
   "description": "Leaderboard of models replaying your own saved Hermes tasks.",
   "icon": "Trophy",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "api": "plugin_api.py"
 }
