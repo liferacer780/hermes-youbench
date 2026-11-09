@@ -47,7 +47,7 @@ hermes plugins enable youbench
 Or from this repository:
 
 ```bash
-git clone https://github.com/OWNER/hermes-youbench ~/.hermes/plugins/youbench
+git clone https://github.com/liferacer780/hermes-youbench ~/.hermes/plugins/youbench
 hermes plugins enable youbench
 ```
 
