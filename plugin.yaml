@@ -1,0 +1,40 @@
+name: youbench
+version: "0.1.0"
+manifest_version: 2
+api_version: 1
+description: "Benchmark models on YOUR work. YouBench saves real tasks from your Hermes sessions (prompt + exact starting files), replays them on any models you choose in isolated sandboxes, grades each attempt with your own test command and a judge, and shows a leaderboard of pass rate, cost, time and steps, so you know which model is actually best for you."
+author: "YouBench contributors"
+license: MIT
+homepage: https://github.com/OWNER/hermes-youbench
+requires_hermes: ">=0.23.0"
+tags: [benchmark, evals, models, cost, coding]
+provides_tools:
+  - youbench_run
+  - youbench_cases
+  - youbench_report
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - pre_tool_call
+  - subagent_start
+config_schema:
+  auto_capture:
+    type: bool
+    default: true
+    label: "Snapshot git workspaces before each turn"
+    description: "Keeps a lightweight snapshot of the working tree before every turn so /youbench save can store the exact starting files. Git repositories only."
+  max_snapshot_mb:
+    type: int
+    default: 50
+    label: "Max case size (MB)"
+    description: "Workspaces larger than this are not saved as cases."
+  default_models:
+    type: list
+    default: []
+    label: "Default models"
+    description: "Models youbench_run uses when none are named, e.g. [\"anthropic/claude-sonnet-4.6\", \"nousresearch/hermes-4-70b\"]."
+  parallel:
+    type: int
+    default: 4
+    label: "Parallel replays"
+    description: "How many replays run at once (Hermes caps lifecycle children at 8)."
